@@ -6,11 +6,13 @@ API, so this client also works with an instance that still runs either one.
 """
 
 import logging
+import os
 import time
+import uuid
 
 import requests
 
-from app.models import Connection
+from app.models import Connection, User
 
 from .base import CompanionClient
 
@@ -132,6 +134,14 @@ class OverseerrClient(CompanionClient):
     def display_name(self) -> str:
         return "Seerr"
 
+    @staticmethod
+    def jellyfin_import_enabled(connection: Connection) -> bool:
+        return (
+            os.getenv("WIZARR_IMPORT_JELLYFIN_TO_SEERR", "").lower() in {"1", "true", "yes"}
+            and connection.media_server is not None
+            and connection.media_server.server_type == "jellyfin"
+        )
+
     def invite_user(
         self,
         username: str,  # noqa: ARG002
@@ -140,7 +150,7 @@ class OverseerrClient(CompanionClient):
         password: str = "",  # noqa: ARG002
     ) -> dict[str, str]:
         """
-        Overseerr connections are info-only, no actual API calls needed.
+        Import an exact Jellyfin identity when explicitly enabled; otherwise informational.
 
         Args:
             username: Username to invite (unused - info-only)
@@ -151,10 +161,37 @@ class OverseerrClient(CompanionClient):
         Returns:
             Dict with 'status' and 'message' keys
         """
+        if self.jellyfin_import_enabled(connection):
+            return self.import_jellyfin_user(username, connection)
         return {
             "status": "info_only",
-            "message": "Seerr auto-imports users automatically",
+            "message": "No import performed; the user can sign into Seerr with their media account.",
         }
+
+    def import_jellyfin_user(self, username: str, connection: Connection) -> dict[str, str]:
+        """Import the newly created media identity, never a username lookalike."""
+        if not connection.url or not connection.api_key:
+            return {"status": "error", "message": "Configure the Seerr URL and API key for Jellyfin import."}
+        user = User.query.filter_by(username=username, server_id=connection.media_server_id).first()
+        if not user:
+            return {"status": "error", "message": "The new Jellyfin identity was not found in Wizarr."}
+        try:
+            media_id = uuid.UUID(user.token).hex
+            base = connection.url.rstrip("/")
+            headers = {"X-Api-Key": connection.api_key}
+            response = requests.post(base + "/api/v1/user/import-from-jellyfin",
+                json={"jellyfinUserIds": [media_id]}, headers=headers, timeout=15, allow_redirects=False)
+            if response.status_code not in (200, 201):
+                return {"status": "error", "message": f"Seerr Jellyfin import failed (HTTP {response.status_code}); Jellyfin account retained."}
+            # An existing identity makes import return an empty list. Verify by
+            # media ID so retries are safe and email/name collisions stay errors.
+            found = requests.get(base + "/api/v1/user/jellyfin/" + media_id,
+                headers=headers, timeout=15, allow_redirects=False)
+            if found.status_code != 200 or (found.json().get("jellyfinUserId") or "").replace("-", "").lower() != media_id:
+                return {"status": "error", "message": "Seerr did not confirm the imported Jellyfin identity."}
+            return {"status": "success", "message": "Jellyfin user imported into Seerr with its configured default permissions."}
+        except Exception:
+            return {"status": "error", "message": "Could not complete Seerr Jellyfin import; Jellyfin account retained."}
 
     def delete_user(self, username: str, connection: Connection) -> dict[str, str]:  # noqa: ARG002
         """
@@ -189,6 +226,18 @@ class OverseerrClient(CompanionClient):
             Dict with 'status' and 'message' keys
         """
         name = self.display_name
+
+        if self.jellyfin_import_enabled(connection):
+            if not connection.url or not connection.api_key:
+                return {"status": "error", "message": "Configure the Seerr URL and API key for Jellyfin import."}
+            try:
+                response = requests.get(connection.url.rstrip("/") + "/api/v1/user?take=1&skip=0",
+                    headers={"X-Api-Key": connection.api_key}, timeout=10, allow_redirects=False)
+                if response.status_code == 200 and isinstance(response.json().get("results"), list):
+                    return {"status": "success", "message": "Seerr API reachable; automatic Jellyfin import enabled."}
+            except Exception:
+                pass
+            return {"status": "error", "message": "Seerr API access failed; check its URL, API key and permissions."}
 
         if not connection.url:
             return {

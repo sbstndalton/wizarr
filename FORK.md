@@ -13,6 +13,11 @@ This is a community fork of **[wizarrrr/wizarr](https://github.com/wizarrrr/wiza
 
 The companion [Jellyfin Wizarr Requests plugin](https://github.com/sbstndalton/jellyfin-plugin-wizarr-requests) can collect a name and note, require administrator approval, and create a single-use invitation. Enable its name prefill option when using this fork. Set the public Jellyfin address in Wizarr's media server settings; no server address is embedded in this source.
 
+Optional onboarding integrations:
+
+- `WIZARR_IMPORT_JELLYFIN_TO_SEERR=true` imports the exact newly created Jellyfin identity into a Seerr/Jellyseerr connection mapped to that media server. Configure its URL and API key in Wizarr. Seerr assigns its own default permissions; no admin privileges or signup passwords are sent. Existing identities are verified by Jellyfin ID, so retries do not duplicate them. Name/email collisions are reported for review, never silently linked to an old account.
+- `WIZARR_JELLYFIN_TEMPLATE_USER_ID=<Jellyfin user UUID>` copies that user's Apple TV/theme choice, home-row order, and other whitelisted home presentation preferences to new Jellyfin accounts. It copies no credentials, permissions, playback history, or arbitrary custom preferences. Configure Jellyfin Enhanced's own default user settings separately for its per-user features. Optional layout or companion failures are logged without pretending that the already-created Jellyfin account does not exist.
+
 Omitting email also means that email-based account recovery cannot deliver a message for those accounts. A server administrator can handle recovery. Username query parameters can appear in browser history and proxy logs; do not include passwords or other secrets in them.
 
 ## Build and run

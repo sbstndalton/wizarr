@@ -112,5 +112,39 @@ with app.app_context():
    result=routes.UserResource.delete.__wrapped__(routes.UserResource(),target_id)
   check('message' in result and db.session.get(User,target_id) is None,'successful remote deletion removes only synthetic local record')
   check(remote.delete_user.call_args.args==('synthetic-user-id',),'deletion uses media server identifier rather than local row ID')
-print(checks,'synthetic Wizarr checks passed')
+ import os
+ template_client=jellyfin.JellyfinClient.__new__(jellyfin.JellyfinClient)
+ template_client.get=Mock();template_client.post=Mock()
+ with patch.dict(os.environ,{'WIZARR_JELLYFIN_TEMPLATE_USER_ID':''}):
+  template_client.apply_presentation_defaults('b'*32)
+ check(not template_client.get.called and not template_client.post.called,'presentation copy is opt-in')
+ source=Mock();source.json.return_value={'CustomPrefs':{'dashboardTheme':'appletv','homesection0':'smalllibrarytiles','credential':'never-copy'}}
+ destination=Mock();destination.json.return_value={'CustomPrefs':{'keep-target-setting':'yes'}}
+ template_client.get.side_effect=[source,destination]
+ with patch.dict(os.environ,{'WIZARR_JELLYFIN_TEMPLATE_USER_ID':'a'*32}):
+  template_client.apply_presentation_defaults('b'*32)
+ copied=template_client.post.call_args.kwargs['json']['CustomPrefs']
+ check(copied=={'keep-target-setting':'yes','dashboardTheme':'appletv','homesection0':'smalllibrarytiles'},'presentation copy whitelists UI preferences and preserves target settings')
+ from app.models import Connection
+ import app.services.companions.overseerr as companion
+ db.session.add(User(token='c'*32,username='import-synth',email='',code='SYNTH12345',server_id=server.id));db.session.commit()
+ connection=Connection(connection_type='overseerr',name='Synthetic Seerr',url='http://seerr.example.invalid',api_key='synthetic-secret',media_server_id=server.id)
+ connection.media_server=server
+ db.session.add(connection);db.session.commit()
+ client=companion.OverseerrClient()
+ with patch.dict(os.environ,{'WIZARR_IMPORT_JELLYFIN_TO_SEERR':''}),patch.object(companion.requests,'post') as post:
+  check(client.invite_user('import-synth','',connection)['status']=='info_only' and not post.called,'Seerr import is opt-in')
+ created=Mock(status_code=201);created.json.return_value=[]
+ found=Mock(status_code=200);found.json.return_value={'jellyfinUserId':'c'*32}
+ with patch.dict(os.environ,{'WIZARR_IMPORT_JELLYFIN_TO_SEERR':'true'}),patch.object(companion.requests,'post',return_value=created) as post,patch.object(companion.requests,'get',return_value=found):
+  result=client.invite_user('import-synth','',connection,password='never-forward')
+  check(result['status']=='success','existing or newly imported Seerr identity confirmed by media ID')
+  check(post.call_args.kwargs['json']=={'jellyfinUserIds':['c'*32]} and not post.call_args.kwargs['allow_redirects'],'import sends only exact media ID, without password or privilege grants')
+ failed=Mock(status_code=500)
+ with patch.dict(os.environ,{'WIZARR_IMPORT_JELLYFIN_TO_SEERR':'true'}),patch.object(companion.requests,'post',return_value=failed),patch.object(companion.requests,'get') as get:
+  check(client.invite_user('import-synth','',connection)['status']=='error' and not get.called,'Seerr failure is reported without false success')
+ ready=Mock(status_code=200);ready.json.return_value={'results':[]}
+ with patch.dict(os.environ,{'WIZARR_IMPORT_JELLYFIN_TO_SEERR':'true'}),patch.object(companion.requests,'get',return_value=ready):
+  check(client.test_connection(connection)['status']=='success','Seerr connection test validates API access for Jellyfin imports')
+ print(checks,'synthetic Wizarr checks passed')
 

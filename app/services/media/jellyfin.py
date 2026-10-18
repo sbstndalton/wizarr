@@ -1,4 +1,6 @@
 import logging
+import os
+import uuid
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
@@ -113,6 +115,27 @@ class JellyfinClient(RestApiMixin):
 
     def set_policy(self, user_id: str, policy: dict) -> None:
         self.post(f"/Users/{user_id}/Policy", json=policy)
+
+    def apply_presentation_defaults(self, user_id: str) -> None:
+        """Copy only home presentation preferences from an opt-in template user."""
+        template = os.getenv("WIZARR_JELLYFIN_TEMPLATE_USER_ID", "").strip()
+        if not template:
+            return
+        template = uuid.UUID(template).hex
+        target = uuid.UUID(user_id).hex
+        if template == target:
+            return
+        path = "/DisplayPreferences/usersettings"
+        source = self.get(path, params={"userId": template, "client": "emby"}).json()
+        preferences = self.get(path, params={"userId": target, "client": "emby"}).json()
+        allowed = [f"homesection{i}" for i in range(10)] + [
+            "dashboardTheme", "tvhome", "useEpisodeImagesInNextUpAndResume", "useModularHome"
+        ]
+        custom = preferences.setdefault("CustomPrefs", {})
+        for key in allowed:
+            if key in source.get("CustomPrefs", {}):
+                custom[key] = source["CustomPrefs"][key]
+        self.post(path, params={"userId": target, "client": "emby"}, json=preferences)
 
     def delete_user(self, user_id: str) -> None:
         self.delete(f"/Users/{user_id}")
@@ -694,6 +717,12 @@ class JellyfinClient(RestApiMixin):
             )
             db.session.commit()
 
+            try:
+                self.apply_presentation_defaults(user_id)
+            except Exception as exc:
+                # The account already exists: never report signup as failed and
+                # invite a duplicate retry just because optional styling failed.
+                logging.warning("Jellyfin presentation defaults could not be applied: %s", exc)
             return True, ""
 
         except JellyfinUsernameTaken:
