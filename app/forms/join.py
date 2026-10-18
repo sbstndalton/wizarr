@@ -36,14 +36,12 @@ class JoinForm(FlaskForm):
     password = PasswordField(
         "Password",
         validators=[
-            DataRequired(),
             Length(max=128, message="Password must be at most 128 characters."),
         ],
     )
     confirm_password = PasswordField(
         "Confirm password",
         validators=[
-            DataRequired(),
             EqualTo("password", message="Passwords must match."),
         ],
     )

@@ -17,6 +17,10 @@ from .utils import library_name_selected, newest_first
 if TYPE_CHECKING:
     from app.services.media.user_details import MediaUserDetails
 
+
+class JellyfinUsernameTaken(ValueError):
+    """The account name is already present on Jellyfin."""
+
 # Resized image requests. Jellyfin and Emby both accept maxWidth, maxHeight
 # and quality, and they only make an image smaller, never larger.
 # The join page shows posters at about 120x160 px. 240 px wide is sharp on a
@@ -99,6 +103,10 @@ class JellyfinClient(RestApiMixin):
             return {}
 
     def create_user(self, username: str, password: str) -> str:
+        # The local Wizarr cache may not include accounts created in Jellyfin.
+        users = self.get("/Users").json()
+        if any(user.get("Name", "").casefold() == username.casefold() for user in users):
+            raise JellyfinUsernameTaken("Username already exists on Jellyfin.")
         return self.post(
             "/Users/New", json={"Name": username, "Password": password}
         ).json()["Id"]
@@ -591,7 +599,7 @@ class JellyfinClient(RestApiMixin):
     ) -> tuple[bool, str]:
         if email and not EMAIL_RE.fullmatch(email):
             return False, "Invalid e-mail address."
-        if not 1 <= len(password) <= 128:
+        if len(password) > 128:
             return False, "Enter a password (up to 128 characters)."
         if password != confirm:
             return False, "Passwords do not match."
@@ -688,6 +696,9 @@ class JellyfinClient(RestApiMixin):
 
             return True, ""
 
+        except JellyfinUsernameTaken:
+            db.session.rollback()
+            return False, "That username already exists on Jellyfin. Sign in with the existing account or choose a different username."
         except Exception:
             logging.error("Jellyfin join error", exc_info=True)
             db.session.rollback()

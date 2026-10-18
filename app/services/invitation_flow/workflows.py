@@ -573,7 +573,7 @@ class MixedWorkflow(InvitationWorkflow):
             # Need Plex OAuth first
             return self.show_initial_form(invitation, servers)
 
-        if other_servers and not form_data.get("password"):
+        if other_servers and "password" not in form_data:
             # Need password for local servers
             return self.show_initial_form(invitation, servers)
 

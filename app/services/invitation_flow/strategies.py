@@ -63,7 +63,7 @@ class FormBasedStrategy(AuthenticationStrategy):
 
     def get_required_fields(self) -> list[str]:
         """Get required form fields."""
-        return ["username", "password", "confirm_password"]
+        return ["username"]
 
 
 class PlexOAuthStrategy(AuthenticationStrategy):
@@ -117,7 +117,7 @@ class HybridStrategy(AuthenticationStrategy):
             return False, "Plex OAuth required", {"next_step": "plex_oauth"}
 
         # Have Plex token, now need password for other servers
-        if not form_data.get("password"):
+        if "password" not in form_data:
             return (
                 False,
                 "Password required for local servers",
@@ -138,7 +138,7 @@ class HybridStrategy(AuthenticationStrategy):
 
     def get_required_fields(self) -> list[str]:
         """Required fields depend on authentication stage."""
-        return ["username", "password", "confirm_password"]
+        return ["username"]
 
 
 class StrategyFactory:

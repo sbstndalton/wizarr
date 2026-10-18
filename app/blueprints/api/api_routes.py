@@ -64,6 +64,14 @@ api.init_app(api_bp)
 # Set up logging
 logger = logging.getLogger("wizarr.api")
 
+
+@api_bp.after_app_request
+def log_user_deletion_response(response):
+    """Trace deletion attempts without logging credentials or request bodies."""
+    if request.method == "DELETE" and request.path.startswith("/api/users/"):
+        logger.warning("User deletion API response: status=%s", response.status_code)
+    return response
+
 # Create namespaces for organizing endpoints
 status_ns = api.namespace("status", description="System status operations")
 version_ns = api.namespace("version", description="App version information")
@@ -420,6 +428,7 @@ class UsersListResource(Resource):
 class UserResource(Resource):
     @api.doc("delete_user", security="apikey")
     @api.response(200, "User deleted successfully", success_message_model)
+    @api.response(502, "Media server deletion failed; local record retained", error_model)
     @api.response(401, "Invalid or missing API key", error_model)
     @api.response(404, "User not found", error_model)
     @api.response(500, "Internal server error", error_model)
@@ -441,13 +450,14 @@ class UserResource(Resource):
             logger.info("API: Deleting user %s", user_id)
 
             # Delete user using the service (takes only user.id)
-            delete_user(user.id)
+            delete_user(user.id, require_remote=True)
             return {"message": f"User {user.username} deleted successfully"}
 
         except Exception as e:
+            db.session.rollback()
             logger.error("Error deleting user %s: %s", user_id, str(e))
             logger.error(traceback.format_exc())
-            return {"error": "Internal server error"}, 500
+            return {"error": "The media server could not delete this account. The local user record was kept; check the server connection and permissions."}, 502
 
 
 @users_ns.route("/<int:user_id>/enable")
