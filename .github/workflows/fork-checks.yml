@@ -30,3 +30,15 @@ jobs:
             --entrypoint /app/.venv/bin/python \
             -v "$PWD/tests/fork_onboarding_smoke.py:/tmp/fork_onboarding_smoke.py:ro" \
             wizarr-fork-check:ci /tmp/fork_onboarding_smoke.py
+      - name: Verify production entrypoint starts
+        run: |
+          trap 'docker rm -f wizarr-fork-boot >/dev/null 2>&1 || true' EXIT
+          docker run -d --name wizarr-fork-boot --network none wizarr-fork-check:ci
+          for attempt in $(seq 1 45); do
+            if docker exec wizarr-fork-boot curl -fsS http://127.0.0.1:5690/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs --tail 100 wizarr-fork-boot
+          exit 1
