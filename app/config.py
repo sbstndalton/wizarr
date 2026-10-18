@@ -12,8 +12,6 @@ from app.utils.session_cache import RobustFileSystemCache
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# Optional canonical public Wizarr address for invitation links returned by the API.
-WIZARR_PUBLIC_URL = os.getenv("WIZARR_PUBLIC_URL", "").strip()
 
 
 def env_bool(key: str, default: bool = False) -> bool:
@@ -96,6 +94,8 @@ def get_or_create_secret(key, generator_func):
 
 
 class BaseConfig:
+    # Canonical public address for invitation links returned by the API.
+    WIZARR_PUBLIC_URL = os.getenv("WIZARR_PUBLIC_URL", "").strip()
     # Flask
     SECRET_KEY = get_or_create_secret("SECRET_KEY", generate_secret_key)
     # Sessions

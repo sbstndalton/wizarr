@@ -16,6 +16,8 @@ def check(value,message):
  checks+=1
  print('PASS',message)
 from app.blueprints.api.api_routes import _generate_invitation_url
+from app.config import ProductionConfig
+check(hasattr(ProductionConfig,'WIZARR_PUBLIC_URL'),'production config exposes public invitation URL setting')
 with app.test_request_context('/',base_url='http://127.0.0.1:5690'):
  check(_generate_invitation_url('SYNTH12345')=='/j/SYNTH12345','unconfigured API URL remains compatible')
  app.config['WIZARR_PUBLIC_URL']='https://invites.example.invalid/'
