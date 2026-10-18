@@ -14,6 +14,11 @@ app/static/js/vendor/
 app/static/css/vendor/
 
 CLAUDE.md
+.claude/
+.codex/
+.agents/
+AGENTS.md
+GEMINI.md
 .python-version
 
 idea/

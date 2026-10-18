@@ -79,6 +79,14 @@ RUN mkdir -p /.cache
 
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.title="Wizarr - sbstndalton community fork" \
+      org.opencontainers.image.source="https://github.com/sbstndalton/wizarr" \
+      org.opencontainers.image.url="https://github.com/sbstndalton/wizarr" \
+      org.opencontainers.image.description="Wizarr fork with optional guest email, flexible guest passwords, and invitation username prefill" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${APP_VERSION}"
 
 # Set Flask environment to production
 ENV FLASK_ENV=production

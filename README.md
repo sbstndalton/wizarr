@@ -1,4 +1,7 @@
 # Wizarr
+
+> **Community fork maintained by [sbstndalton](https://github.com/sbstndalton).** Based on [wizarrrr/wizarr](https://github.com/wizarrrr/wizarr), with upstream history and MIT license preserved. This fork adds optional guest email, flexible guest passwords, and editable username prefill from invitation links. See [fork changes, installation, and upstream update instructions](FORK.md). The upstream README follows below.
+
 > 🚀 **Development Relaunched:** We're excited to announce that **Wizarr is back in active development**!
 <br></br>
 <p align="center">
