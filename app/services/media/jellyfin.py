@@ -589,10 +589,10 @@ class JellyfinClient(RestApiMixin):
         email: str,
         code: str,
     ) -> tuple[bool, str]:
-        if not EMAIL_RE.fullmatch(email):
+        if email and not EMAIL_RE.fullmatch(email):
             return False, "Invalid e-mail address."
-        if not 8 <= len(password) <= 128:
-            return False, "Password must be 8–128 characters."
+        if not 1 <= len(password) <= 128:
+            return False, "Enter a password (up to 128 characters)."
         if password != confirm:
             return False, "Passwords do not match."
 
@@ -602,7 +602,7 @@ class JellyfinClient(RestApiMixin):
 
         server_id = getattr(self, "server_id", None)
         existing = User.query.filter(
-            or_(User.username == username, User.email == email),
+            (or_(User.username == username, User.email == email) if email else User.username == username),
             User.server_id == server_id,
         ).first()
         if existing:

@@ -1,6 +1,8 @@
+import re
+from flask import has_request_context, request, session
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, Regexp
+from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, Regexp
 
 from app.forms.validators import (
     USERNAME_ALLOWED_CHARS_MESSAGE,
@@ -29,17 +31,13 @@ class JoinForm(FlaskForm):
     email = StringField(
         "Email",
         filters=[strip_filter],
-        validators=[DataRequired(), Email()],
+        validators=[Optional(), Email()],
     )
     password = PasswordField(
         "Password",
         validators=[
             DataRequired(),
-            Length(min=8, message="Password must be at least 8 characters."),
-            Regexp(
-                r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$",
-                message="Password must contain at least one uppercase letter, one lowercase letter, and one number.",
-            ),
+            Length(max=128, message="Password must be at most 128 characters."),
         ],
     )
     confirm_password = PasswordField(
@@ -55,3 +53,12 @@ class JoinForm(FlaskForm):
         validators=[DataRequired(), Length(min=6, max=10)],
         render_kw={"minlength": 6, "maxlength": 10},
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if has_request_context() and request.method == "GET" and not self.username.data:
+            code = (request.view_args or {}).get("code")
+            saved = session.get("invite_prefill_username", "") if code == session.get("invite_prefill_code") else ""
+            candidate = request.args.get("username", "") or saved
+            candidate = re.sub(r"[^\w'.-]+", ".", candidate).strip(".")[:USERNAME_MAX_LENGTH]
+            self.username.data = candidate.ljust(USERNAME_MIN_LENGTH, "_") if candidate else ""

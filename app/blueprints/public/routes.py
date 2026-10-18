@@ -89,6 +89,9 @@ def favicon():
 @public_bp.route("/j/<code>")
 @limiter.limit("50 per minute")
 def invite(code):
+    if request.args.get("username"):
+        session["invite_prefill_code"] = code
+        session["invite_prefill_username"] = request.args["username"][:32]
     from app.services.invitation_flow import InvitationFlowManager
 
     manager = InvitationFlowManager()
@@ -669,13 +672,13 @@ def reset_password(code):
         )
 
     # Validate password length
-    if not (8 <= len(new_password) <= 128):
+    if not (1 <= len(new_password) <= 128):
         return render_template(
             "password-reset-form.html",
             code=code,
             username=token.user.username,
             expires_at=token.expires_at,
-            error="Password must be between 8 and 128 characters",
+            error="Enter a password (up to 128 characters)",
         )
 
     # Use the reset token to change the password

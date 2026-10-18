@@ -581,7 +581,7 @@ def reset_user_password(db_id: int, new_password: str) -> bool:
         return False
 
     # Basic safeguard – keep consistent with join rules
-    if not (8 <= len(new_password) <= 128):
+    if not (1 <= len(new_password) <= 128):
         logging.warning("Password does not meet length requirements")
         return False
 

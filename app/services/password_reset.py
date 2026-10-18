@@ -176,12 +176,12 @@ def use_reset_token(code: str, new_password: str) -> tuple[bool, str]:
         return False, error
 
     # Validate password length
-    if not (8 <= len(new_password) <= 128):
+    if not (1 <= len(new_password) <= 128):
         logger.debug(
             "[debug    ] Invalid password length: %s chars [app.services.password_reset]",
             len(new_password),
         )
-        return False, "Password must be between 8 and 128 characters"
+        return False, "Enter a password (up to 128 characters)"
 
     try:
         logger.info(

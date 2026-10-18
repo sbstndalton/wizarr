@@ -63,7 +63,7 @@ class FormBasedStrategy(AuthenticationStrategy):
 
     def get_required_fields(self) -> list[str]:
         """Get required form fields."""
-        return ["username", "email", "password", "confirm_password"]
+        return ["username", "password", "confirm_password"]
 
 
 class PlexOAuthStrategy(AuthenticationStrategy):
@@ -138,7 +138,7 @@ class HybridStrategy(AuthenticationStrategy):
 
     def get_required_fields(self) -> list[str]:
         """Required fields depend on authentication stage."""
-        return ["username", "email", "password", "confirm_password"]
+        return ["username", "password", "confirm_password"]
 
 
 class StrategyFactory:
