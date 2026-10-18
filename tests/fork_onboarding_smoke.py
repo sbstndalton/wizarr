@@ -8,12 +8,21 @@ from pathlib import Path
 
 app=Flask(__name__)
 app.config.update(SECRET_KEY='synthetic-test-only', WTF_CSRF_ENABLED=False)
+app.add_url_rule('/j/<code>',endpoint='public.invite',view_func=lambda code:code)
 checks=0
 def check(value,message):
  global checks
  assert value,message
  checks+=1
  print('PASS',message)
+from app.blueprints.api.api_routes import _generate_invitation_url
+with app.test_request_context('/',base_url='http://127.0.0.1:5690'):
+ check(_generate_invitation_url('SYNTH12345')=='/j/SYNTH12345','unconfigured API URL remains compatible')
+ app.config['WIZARR_PUBLIC_URL']='https://invites.example.invalid/'
+ check(_generate_invitation_url('SYNTH12345')=='https://invites.example.invalid/j/SYNTH12345','API returns full configured public invitation URL')
+ app.config['WIZARR_PUBLIC_URL']='javascript:invalid'
+ check(_generate_invitation_url('SYNTH12345')=='/j/SYNTH12345','invalid public URL falls back without leaking internal host')
+ app.config['WIZARR_PUBLIC_URL']=''
 with app.test_request_context('/j/SYNTH12345?username=Prefill.Test'):
  check(JoinForm().username.data=='Prefill.Test','request name prefilled')
 with app.test_request_context('/j/SYNTH12345'):

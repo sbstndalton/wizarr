@@ -8,6 +8,7 @@ This is a community fork of **[wizarrrr/wizarr](https://github.com/wizarrrr/wiza
 - Guest passwords can be 1–128 characters, without uppercase/number requirements. Password confirmation remains required. Guest reset paths use the same length rule. Administrator password requirements are unchanged. Other media backends may impose their own password rules.
 - `/j/INVITECODE?username=Requested.Name` prefills an editable username. The name survives pre-invite wizard redirects and is normalized to the existing username format and length. It never replaces an applicant's posted username.
 - Invitation validation, approval, server permissions, and account creation remain in their existing paths. A name in a URL does not grant access.
+- Set `WIZARR_PUBLIC_URL=https://your-public-wizarr-host` to return complete invitation links in the API's existing `url` field on creation and listing. Without it, upstream's relative `/j/CODE` response is preserved. The `code` field remains the invitation identifier. A client copying only `code` must use `url` to share a complete link; this fork cannot change a closed-source client's copy button.
 
 The companion [Jellyfin Wizarr Requests plugin](https://github.com/sbstndalton/jellyfin-plugin-wizarr-requests) can collect a name and note, require administrator approval, and create a single-use invitation. Enable its name prefill option when using this fork. Set the public Jellyfin address in Wizarr's media server settings; no server address is embedded in this source.
 

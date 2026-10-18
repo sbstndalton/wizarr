@@ -5,8 +5,9 @@ import hashlib
 import logging
 import traceback
 from functools import wraps
+from urllib.parse import urlsplit
 
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 from flask_login import current_user
 from flask_restx import Resource, abort
 from sqlalchemy import func
@@ -163,16 +164,35 @@ def require_api_key_or_session(f):
 
 
 def _generate_invitation_url(code):
-    """Generate the stable invitation path for the given code."""
+    """Use a configured public URL without leaking an internal request host."""
     try:
         from flask import url_for
 
-        return url_for("public.invite", code=code, _external=False)
+        path = url_for("public.invite", code=code, _external=False)
 
     except Exception as e:
         logger.warning("Failed to generate invitation URL: %s", str(e))
         # Fallback to basic format
-        return f"/j/{code}"
+        path = f"/j/{code}"
+
+    public_url = current_app.config.get("WIZARR_PUBLIC_URL", "").strip()
+    if public_url:
+        try:
+            parsed = urlsplit(public_url)
+            valid = (
+                parsed.scheme == "https"
+                and parsed.hostname
+                and not parsed.username
+                and not parsed.password
+                and not parsed.query
+                and not parsed.fragment
+            )
+        except ValueError:
+            valid = False
+        if valid:
+            return public_url.rstrip("/") + path
+        logger.warning("Invalid WIZARR_PUBLIC_URL; returning relative invitation path")
+    return path
 
 
 def _calculate_invitation_status(invitation):
