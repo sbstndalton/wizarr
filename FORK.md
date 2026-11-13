@@ -27,12 +27,12 @@ Build from this fork's source using its existing Dockerfile:
 ```sh
 git clone https://github.com/sbstndalton/wizarr.git
 cd wizarr
-docker build --build-arg APP_VERSION=2026.10.1-sbstndalton.1 \
-  --build-arg VCS_REF="$(git rev-parse HEAD)" -t wizarr-community:2026.10.1-sbstndalton.1 .
+docker build --build-arg APP_VERSION=2026.10.1-sbstndalton.5 \
+  --build-arg VCS_REF="$(git rev-parse HEAD)" -t wizarr-community:2026.10.1-sbstndalton.5 .
 docker run -d --name wizarr -p 5690:5690 \
   -v /path/to/wizarr/database:/data/database \
   -e PUID=1000 -e PGID=1000 --restart unless-stopped \
-  wizarr-community:2026.10.1-sbstndalton.1
+  wizarr-community:2026.10.1-sbstndalton.5
 ```
 
 Replace the database path and user/group IDs with your deployment values. For an existing installation, back up the database and configuration, then recreate its container using the fork image while preserving its environment, network, ports, and database mount. Do not run two writers against the same database. This source release does not publish a prebuilt container image.
